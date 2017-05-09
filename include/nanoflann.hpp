@@ -54,7 +54,8 @@
 #include <cmath>   // for abs()
 #include <cstdlib> // for abs()
 #include <limits>
-
+using namespace std;
+#include<bits/stdc++.h>
 // Avoid conflicting declaration of min/max macros in windows headers
 #if !defined(NOMINMAX) && (defined(_WIN32) || defined(_WIN32_)  || defined(WIN32) || defined(_WIN64))
 # define NOMINMAX
@@ -758,10 +759,10 @@ namespace nanoflann
 		/**
 		 * The dataset used by this index
 		 */
-		const DatasetAdaptor &dataset; //!< The source of our data
+		DatasetAdaptor &dataset; //!< The source of our data
 
 		const KDTreeSingleIndexAdaptorParams index_params;
-
+		size_t thresh = 0, curr_dataset_idx = 0;
 		size_t m_size; //!< Number of current points in the dataset
 		size_t m_size_at_index_build; //!< Number of points in the dataset when the index was built
 		int dim;  //!< Dimensionality of each data point
@@ -775,6 +776,7 @@ namespace nanoflann
 				struct leaf
                                 {
 					IndexType    left, right;  //!< Indices of points in leaf node
+					vector<IndexType> pts_new_idx;
 				} lr;
 				struct nonleaf
                                 {
@@ -828,7 +830,7 @@ namespace nanoflann
 		 * @param inputData Dataset with the input features
 		 * @param params Basically, the maximum leaf node size
 		 */
-		KDTreeSingleIndexAdaptor(const int dimensionality, const DatasetAdaptor& inputData, const KDTreeSingleIndexAdaptorParams& params = KDTreeSingleIndexAdaptorParams() ) :
+		KDTreeSingleIndexAdaptor(const int dimensionality, DatasetAdaptor& inputData, const KDTreeSingleIndexAdaptorParams& params = KDTreeSingleIndexAdaptorParams() ) :
 			dataset(inputData), index_params(params), root_node(NULL), distance(inputData)
 		{
 			m_size = dataset.kdtree_get_point_count();
@@ -853,13 +855,54 @@ namespace nanoflann
 		}
 
 		/**
+		 * Insert new element
+		 */
+
+		void insert(const DatasetAdaptor &cloud)
+		{
+			
+			dataset.merge_point_cloud(cloud);
+			const size_t N=dataset.kdtree_get_point_count();
+			
+			int diff=N-m_size_at_index_build;
+			if(diff>thresh)
+			{
+				//clock_t begin = clock();
+				buildIndex();
+				//clock_t end = clock();
+  				//double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+  				//cout <<elapsed_secs<<"zzz\n";
+			}
+			else
+			{
+				for(size_t i=curr_dataset_idx;i<N;i++)
+				{
+					ElementType tmp[]={dataset.kdtree_get_pt(i,0),dataset.kdtree_get_pt(i,1),dataset.kdtree_get_pt(i,2)};
+					NodePtr node_closest;
+					nanoflann::KNNResultSet<ElementType> resultSet(1);
+					size_t ret_index;
+					ElementType out_dist_sqr;
+					resultSet.init(&ret_index, &out_dist_sqr );
+					findNeighborNode(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
+					(node_closest->node_type.lr.pts_new_idx).push_back(i);
+					/*for(int j=node_closest->node_type.lr.left;j<node_closest->node_type.lr.right;j++)
+						cout <<vind[j]<<" ";	
+					cout <<"\n";*/
+				}
+				curr_dataset_idx=N; 
+			}
+		}
+
+		/**
 		 * Builds the index
 		 */
 		void buildIndex()
 		{
 			init_vind();
 			freeIndex();
+			//cout <<typeid(distance).name()<<"\n";
 			m_size_at_index_build = m_size;
+			curr_dataset_idx = m_size;
 			if(m_size == 0) return;
 			computeBoundingBox(root_bbox);
 			root_node = divideTree(0, m_size, root_bbox );   // construct the tree
@@ -912,6 +955,23 @@ namespace nanoflann
 			DistanceType distsq = computeInitialDistances(vec, dists);
 			searchLevel(result, vec, root_node, distsq, dists, epsError);  // "count_leaf" parameter removed since was neither used nor returned to the user.
             return result.full();
+		}
+
+		
+		bool findNeighborNode(nanoflann::KNNResultSet<ElementType>& result, const ElementType* vec, const SearchParams& searchParams, NodePtr &node_closest) const
+		{
+			assert(vec);
+            if (size() == 0)
+                return false;
+			if (!root_node)
+                throw std::runtime_error("[nanoflann] findNeighborsNode() called before building the index.");
+			float epsError = 1+searchParams.eps;
+
+			distance_vector_t dists; // fixed or variable-sized container (depending on DIM)
+			dists.assign((DIM>0 ? DIM : dim) ,0); // Fill it with zeros.
+			DistanceType distsq = computeInitialDistances(vec, dists);
+			searchNodeClosest(result, vec, root_node, distsq, dists, epsError, node_closest);  // "count_leaf" parameter removed since was neither used nor returned to the user.
+			return result.full();
 		}
 
 		/**
@@ -1047,7 +1107,7 @@ namespace nanoflann
 				node->child1 = node->child2 = NULL;    /* Mark as leaf node. */
 				node->node_type.lr.left = left;
 				node->node_type.lr.right = right;
-
+				node->node_type.lr.pts_new_idx.clear();
 				// compute bounding-box of leaf points
 				for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
 					bbox[i].low = dataset_get(vind[left],i);
@@ -1198,6 +1258,77 @@ namespace nanoflann
 
 			return distsq;
 		}
+		
+	
+			/**
+		 * Performs an exact search in the tree starting from a node.
+		 * \tparam RESULTSET Should be any ResultSet<DistanceType>
+		 */
+		template <class RESULTSET>
+		void searchNodeClosest(RESULTSET& result_set, const ElementType* vec, const NodePtr node, DistanceType mindistsq,
+						 distance_vector_t& dists, const float epsError, NodePtr &node_closest) const
+		{
+			/* If this is a leaf node, then do check and return. */
+			if ((node->child1 == NULL)&&(node->child2 == NULL)) {
+				//count_leaf += (node->lr.right-node->lr.left);  // Removed since was neither used nor returned to the user.	
+				DistanceType worst_dist = result_set.worstDist();
+				DistanceType best_dist = worst_dist;
+				for (IndexType i=node->node_type.lr.left; i<node->node_type.lr.right; ++i) {
+					const IndexType index = vind[i];// reorder... : i;
+					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
+					if (dist<worst_dist) {
+						result_set.addPoint(dist,vind[i]);
+					}
+					if (dist<best_dist) {
+						best_dist=dist;
+						node_closest=node;
+					}
+				}
+				for (IndexType i=0; i<node->node_type.lr.pts_new_idx.size(); ++i) {
+					const IndexType index = node->node_type.lr.pts_new_idx[i];// reorder... : i;
+					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
+					if (dist<worst_dist) {
+						result_set.addPoint(dist,index);
+					}
+					if (dist<best_dist) {
+						best_dist=dist;
+						node_closest=node;
+					}
+				}
+				return;
+			}
+
+			/* Which child branch should be taken first? */
+			int idx = node->node_type.sub.divfeat;
+			ElementType val = vec[idx];
+			DistanceType diff1 = val - node->node_type.sub.divlow;
+			DistanceType diff2 = val - node->node_type.sub.divhigh;
+
+			NodePtr bestChild;
+			NodePtr otherChild;
+			DistanceType cut_dist;
+			if ((diff1+diff2)<0) {
+				bestChild = node->child1;
+				otherChild = node->child2;
+				cut_dist = distance.accum_dist(val, node->node_type.sub.divhigh, idx);
+			}
+			else {
+				bestChild = node->child2;
+				otherChild = node->child1;
+				cut_dist = distance.accum_dist( val, node->node_type.sub.divlow, idx);
+			}
+
+			/* Call recursively to search next level down. */
+			searchNodeClosest(result_set, vec, bestChild, mindistsq, dists, epsError,node_closest);
+
+			DistanceType dst = dists[idx];
+			mindistsq = mindistsq + cut_dist - dst;
+			dists[idx] = cut_dist;
+			if (mindistsq*epsError<=result_set.worstDist()) {
+				searchNodeClosest(result_set, vec, otherChild, mindistsq, dists, epsError,node_closest);
+			}
+			dists[idx] = dst;
+		}
 
 		/**
 		 * Performs an exact search in the tree starting from a node.
@@ -1216,6 +1347,13 @@ namespace nanoflann
 					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
 					if (dist<worst_dist) {
 						result_set.addPoint(dist,vind[i]);
+					}
+				}
+				for (IndexType i=0; i<node->node_type.lr.pts_new_idx.size(); ++i) {
+					const IndexType index = node->node_type.lr.pts_new_idx[i];// reorder... : i;
+					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
+					if (dist<worst_dist) {
+						result_set.addPoint(dist,index);
 					}
 				}
 				return;
