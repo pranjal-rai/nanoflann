@@ -172,7 +172,7 @@ void kdtree_demo(const size_t N)
 		// Get worst (furthest) point, without sorting:
 		std::pair<size_t,num_t> worst_pair = resultSet.worst_item();
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
-		/*cout <<cloud.kdtree_get_pt(worst_pair.first,0)<<" "<<cloud.kdtree_get_pt(worst_pair.first,1)<<" "<<cloud.kdtree_get_pt(worst_pair.first,2)<<"\n";
+		//cout <<cloud.kdtree_get_pt(worst_pair.first,0)<<" "<<cloud.kdtree_get_pt(worst_pair.first,1)<<" "<<cloud.kdtree_get_pt(worst_pair.first,2)<<"\n";
 		float distc=-1;
 		for(int i=0;i<cloud.kdtree_get_point_count();i++)
 		{
@@ -182,8 +182,9 @@ void kdtree_demo(const size_t N)
 				distc=max(tmp,distc);
 			}
 		}
-		cout <<distc<<"aaa\n";*/
+		cout <<distc<<"aaa\n";
 	}
+	return;
 	kdtree_dynamic_demo<num_t>(1000,index);
 	/*{
 		// do a knn search
