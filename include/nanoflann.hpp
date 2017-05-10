@@ -137,6 +137,15 @@ namespace nanoflann
 		}
 	};
 
+	/** operator "<" for std::sort() */
+	struct IndexDist_Sorter
+	{
+		/** PairType will be typically: std::pair<IndexType,DistanceType> */
+		template <typename PairType>
+		inline bool operator()(const PairType &p1, const PairType &p2) const {
+			return p1.second < p2.second;
+		}
+	};
 
 	/**
 	 * A result-set class used when performing a radius based search.
@@ -185,34 +194,13 @@ namespace nanoflann
 		std::pair<IndexType,DistanceType> worst_item() const
 		{
 		   if (m_indices_dists.empty()) throw std::runtime_error("Cannot invoke RadiusResultSet::worst_item() on an empty list of results.");
-		   typedef typename std::vector<std::pair<IndexType,DistanceType> >::iterator DistIt;
-		   DistIt it=m_indices_dists.begin();
-		   IndexType index=it->first;
-		   DistanceType dist=it->second;
-		   it++;
-		   while(it!=m_indices_dists.end())
-		   {
-	   		if(it->second>dist)
-	   		{
-	   			dist=it->second;
-	   			index=it->first;
-	   		}
-	   		it++;
-		   }
-		   return std::make_pair(index,dist);
+		   typedef typename std::vector<std::pair<IndexType,DistanceType> >::const_iterator DistIt;
+		   DistIt it = std::max_element(m_indices_dists.begin(), m_indices_dists.end(), IndexDist_Sorter());
+		   return *it;
 		}
 	};
 
-	/** operator "<" for std::sort() */
-	struct IndexDist_Sorter
-	{
-		/** PairType will be typically: std::pair<IndexType,DistanceType> */
-		template <typename PairType>
-		inline bool operator()(const PairType &p1, const PairType &p2) const {
-			return p1.second < p2.second;
-		}
-	};
-
+	
 	/** @} */
 
 
