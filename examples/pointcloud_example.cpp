@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *************************************************************************/
 
-#include "../include/nanoflann.hpp"
+#include <nanoflann.hpp>
 
 #include <ctime>
 #include <cstdlib>
@@ -73,7 +73,7 @@ struct PointCloud
 	inline void merge_point_cloud(PointCloud<T> new_cloud)
 	{
 		int idx = pts.size();
-		pts.resize(pts.size()+new_cloud.kdtree_get_point_count());	
+		pts.resize(pts.size()+new_cloud.kdtree_get_point_count());
 		for(int i=0, j=idx;i<new_cloud.kdtree_get_point_count();i++, j++)
 		{
 			pts[j].x=new_cloud.kdtree_get_pt(i,0);
@@ -103,26 +103,12 @@ void generateRandomPointCloud(PointCloud<T> &point, const size_t N, const T max_
 	std::cout << "done\n";
 }
 
-template <typename T>
-void generateRandomPointCloud1(PointCloud<T> &point, const size_t N, const T max_range = 10)
-{
-	std::cout << "Generating "<< N << " point cloud...";
-	point.pts.resize(N);
-	for (size_t i=0;i<N;i++)
-	{
-		point.pts[i].x = 0.52;
-		point.pts[i].y = 0.5;
-		point.pts[i].z = 0.5;
-	}
-	std::cout << "done\n";
-}
-
 template <typename num_t>
 void kdtree_dynamic_demo(const size_t N, KDTreeSingleIndexAdaptor<L2_Simple_Adaptor<num_t, PointCloud<num_t> >, PointCloud<num_t>, 3 /* dim */> &index)
 {
 	PointCloud<num_t> cloud;
 	generateRandomPointCloud(cloud, N);
-	index.insert(cloud);	
+	index.insert(cloud);
 }
 
 
@@ -143,11 +129,12 @@ void kdtree_demo(const size_t N)
 		3 /* dim */
 		> my_kd_tree_t;
 
-	
+	dump_mem_usage();
 
 	my_kd_tree_t   index(3 /*dim*/, cloud, KDTreeSingleIndexAdaptorParams(10 /* max leaf */) );
 	index.buildIndex();
-	dump_mem_usage();
+
+	dump_mem_usage();	
 	{
 		// do a knn search
 		const size_t num_results = 1;
@@ -159,7 +146,6 @@ void kdtree_demo(const size_t N)
 
 		std::cout << "knnSearch(nn="<<num_results<<"): \n";
 		std::cout << "ret_index=" << ret_index << " out_dist_sqr=" << out_dist_sqr << endl;
-		//cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
 	}
 	{
 		// Unsorted radius search:
@@ -172,7 +158,6 @@ void kdtree_demo(const size_t N)
 		// Get worst (furthest) point, without sorting:
 		std::pair<size_t,num_t> worst_pair = resultSet.worst_item();
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
-		//cout <<cloud.kdtree_get_pt(worst_pair.first,0)<<" "<<cloud.kdtree_get_pt(worst_pair.first,1)<<" "<<cloud.kdtree_get_pt(worst_pair.first,2)<<"\n";
 	}
 	
 	kdtree_dynamic_demo<num_t>(1000000,index);
@@ -187,7 +172,6 @@ void kdtree_demo(const size_t N)
 
 		std::cout << "knnSearch(nn="<<num_results<<"): \n";
 		std::cout << "ret_index=" << ret_index << " out_dist_sqr=" << out_dist_sqr << endl;
-		//cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
 	}
 	{
 		// Unsorted radius search:
@@ -200,9 +184,7 @@ void kdtree_demo(const size_t N)
 		// Get worst (furthest) point, without sorting:
 		std::pair<size_t,num_t> worst_pair = resultSet.worst_item();
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
-		//cout <<cloud.kdtree_get_pt(worst_pair.first,0)<<" "<<cloud.kdtree_get_pt(worst_pair.first,1)<<" "<<cloud.kdtree_get_pt(worst_pair.first,2)<<"\n";
 	}
-
 	
 }
 
@@ -210,8 +192,8 @@ int main()
 {
 	// Randomize Seed
 	srand(time(NULL));
-	kdtree_demo<float>(10000);
-	//kdtree_demo<double>(1000000);
+	kdtree_demo<float>(1000000);
+	kdtree_demo<double>(1000000);
 	return 0;
 }
 

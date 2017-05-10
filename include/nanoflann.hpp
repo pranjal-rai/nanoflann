@@ -872,8 +872,7 @@ namespace nanoflann
 			if(!dataset.kdtree_get_point_count())
 				throw std::runtime_error("[nanoflann] insert() cannot merge to an empty set.");
 			dataset.merge_point_cloud(cloud);
-			const size_t N=dataset.kdtree_get_point_count();
-			
+			const size_t N=dataset.kdtree_get_point_count();			
 			int diff=N-m_size_at_index_build;
 			if(diff>thresh)
 			{
@@ -905,7 +904,7 @@ namespace nanoflann
 						node_closest->node_type.lr.pts_new_tail->next=NULL;
 					}
 				}
-				curr_dataset_idx=N; 
+				curr_dataset_idx=N;
 			}
 		}
 
@@ -1276,7 +1275,7 @@ namespace nanoflann
 		}
 		
 	
-			/**
+		/**
 		 * Performs an exact search in the tree starting from a node.
 		 * \tparam RESULTSET Should be any ResultSet<DistanceType>
 		 */
