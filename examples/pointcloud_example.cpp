@@ -99,7 +99,6 @@ void generateRandomPointCloud(PointCloud<T> &point, const size_t N, const T max_
 		point.pts[i].x = max_range * (rand() % 1000) / T(1000);
 		point.pts[i].y = max_range * (rand() % 1000) / T(1000);
 		point.pts[i].z = max_range * (rand() % 1000) / T(1000);
-		std::cout <<point.pts[i].x<<" "<<point.pts[i].y<<" "<<point.pts[i].z<<"\n";
 	}
 	std::cout << "done\n";
 }
@@ -161,7 +160,7 @@ void kdtree_demo(const size_t N)
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
 	}
 	
-	kdtree_dynamic_demo<num_t>(1000,index);
+	kdtree_dynamic_demo<num_t>(10000,index);
 	{
 		// do a knn search
 		const size_t num_results = 1;
@@ -193,8 +192,8 @@ int main()
 {
 	// Randomize Seed
 	srand(time(NULL));
-	kdtree_demo<float>(1000);
-	//kdtree_demo<double>(1000000);
+	kdtree_demo<float>(10000);
+	kdtree_demo<double>(10000);
 	return 0;
 }
 
