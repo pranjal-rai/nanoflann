@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *************************************************************************/
 
-#include "../include/nanoflann.hpp"
+#include <nanoflann.hpp>
 
 #include <ctime>
 #include <cstdlib>
@@ -160,7 +160,7 @@ void kdtree_demo(const size_t N)
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
 	}
 	
-	kdtree_dynamic_demo<num_t>(10000,index);
+	kdtree_dynamic_demo<num_t>(1000000,index);
 	{
 		// do a knn search
 		const size_t num_results = 1;
@@ -192,8 +192,8 @@ int main()
 {
 	// Randomize Seed
 	srand(time(NULL));
-	kdtree_demo<float>(10000);
-	kdtree_demo<double>(10000);
+	kdtree_demo<float>(1000000);
+	kdtree_demo<double>(1000000);
 	return 0;
 }
 

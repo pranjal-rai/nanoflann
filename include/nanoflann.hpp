@@ -929,29 +929,6 @@ namespace nanoflann
 			}
 		}
 
-		void computeBoundingBox(BoundingBox& bbox, std::vector<IndexType> &ind)
-		{
-			bbox.resize((DIM>0 ? DIM : dim));
-			if (dataset.kdtree_get_bbox(bbox))
-			{
-				// Done! It was implemented in derived class
-			}
-			else
-			{
-				const size_t N = ind.size();
-				if (!N) throw std::runtime_error("[nanoflann] computeBoundingBox() called on leaf node but no data points found.");
-				for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
-					bbox[i].low =
-					bbox[i].high = dataset_get(ind[0],i);
-				}
-				for (size_t k=1; k<N; ++k) {
-					for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
-						if (dataset_get(ind[k],i)<bbox[i].low) bbox[i].low = dataset_get(ind[k],i);
-						if (dataset_get(ind[k],i)>bbox[i].high) bbox[i].high = dataset_get(ind[k],i);
-					}
-				}
-			}
-		}
 
 		/**
 		 * Builds the index
