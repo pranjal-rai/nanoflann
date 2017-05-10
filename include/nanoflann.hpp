@@ -54,8 +54,7 @@
 #include <cmath>   // for abs()
 #include <cstdlib> // for abs()
 #include <limits>
-using namespace std;
-#include<bits/stdc++.h>
+
 // Avoid conflicting declaration of min/max macros in windows headers
 #if !defined(NOMINMAX) && (defined(_WIN32) || defined(_WIN32_)  || defined(WIN32) || defined(_WIN64))
 # define NOMINMAX
@@ -762,7 +761,7 @@ namespace nanoflann
 		DatasetAdaptor &dataset; //!< The source of our data
 
 		const KDTreeSingleIndexAdaptorParams index_params;
-		size_t thresh = 0, curr_dataset_idx = 0;
+		size_t thresh, curr_dataset_idx;
 		size_t m_size; //!< Number of current points in the dataset
 		size_t m_size_at_index_build; //!< Number of points in the dataset when the index was built
 		int dim;  //!< Dimensionality of each data point
@@ -776,7 +775,7 @@ namespace nanoflann
 				struct leaf
                                 {
 					IndexType    left, right;  //!< Indices of points in leaf node
-					vector<IndexType> pts_new_idx;
+					std::vector<IndexType> pts_new_idx;
 				} lr;
 				struct nonleaf
                                 {
@@ -835,6 +834,8 @@ namespace nanoflann
 		{
 			m_size = dataset.kdtree_get_point_count();
 			m_size_at_index_build = m_size;
+			thresh = 100;
+			curr_dataset_idx = 0;
 			dim = dimensionality;
 			if (DIM>0) dim=DIM;
 			m_leaf_max_size = params.leaf_max_size;
@@ -860,18 +861,15 @@ namespace nanoflann
 
 		void insert(const DatasetAdaptor &cloud)
 		{
-			
+			if(!dataset.kdtree_get_point_count())
+				throw std::runtime_error("[nanoflann] insert() cannot merge to an empty set.");
 			dataset.merge_point_cloud(cloud);
 			const size_t N=dataset.kdtree_get_point_count();
 			
 			int diff=N-m_size_at_index_build;
 			if(diff>thresh)
 			{
-				//clock_t begin = clock();
 				buildIndex();
-				//clock_t end = clock();
-  				//double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-  				//cout <<elapsed_secs<<"zzz\n";
 			}
 			else
 			{
@@ -883,11 +881,8 @@ namespace nanoflann
 					size_t ret_index;
 					ElementType out_dist_sqr;
 					resultSet.init(&ret_index, &out_dist_sqr );
-					findNeighborNode(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
+					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
 					(node_closest->node_type.lr.pts_new_idx).push_back(i);
-					/*for(int j=node_closest->node_type.lr.left;j<node_closest->node_type.lr.right;j++)
-						cout <<vind[j]<<" ";	
-					cout <<"\n";*/
 				}
 				curr_dataset_idx=N; 
 			}
@@ -900,7 +895,6 @@ namespace nanoflann
 		{
 			init_vind();
 			freeIndex();
-			//cout <<typeid(distance).name()<<"\n";
 			m_size_at_index_build = m_size;
 			curr_dataset_idx = m_size;
 			if(m_size == 0) return;
@@ -957,8 +951,8 @@ namespace nanoflann
             return result.full();
 		}
 
-		
-		bool findNeighborNode(nanoflann::KNNResultSet<ElementType>& result, const ElementType* vec, const SearchParams& searchParams, NodePtr &node_closest) const
+		template <typename RESULTSET>
+		bool findNeighborNode(RESULTSET& result, const ElementType* vec, const SearchParams& searchParams, NodePtr &node_closest) const
 		{
 			assert(vec);
             if (size() == 0)

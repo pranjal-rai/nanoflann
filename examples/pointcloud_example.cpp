@@ -148,7 +148,7 @@ void kdtree_demo(const size_t N)
 	my_kd_tree_t   index(3 /*dim*/, cloud, KDTreeSingleIndexAdaptorParams(10 /* max leaf */) );
 	index.buildIndex();
 	dump_mem_usage();
-	/*{
+	{
 		// do a knn search
 		const size_t num_results = 1;
 		size_t ret_index;
@@ -159,8 +159,8 @@ void kdtree_demo(const size_t N)
 
 		std::cout << "knnSearch(nn="<<num_results<<"): \n";
 		std::cout << "ret_index=" << ret_index << " out_dist_sqr=" << out_dist_sqr << endl;
-		cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
-	}*/
+		//cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
+	}
 	{
 		// Unsorted radius search:
 		const num_t radius = 1;
@@ -175,7 +175,7 @@ void kdtree_demo(const size_t N)
 		//cout <<cloud.kdtree_get_pt(worst_pair.first,0)<<" "<<cloud.kdtree_get_pt(worst_pair.first,1)<<" "<<cloud.kdtree_get_pt(worst_pair.first,2)<<"\n";
 	}
 	
-	kdtree_dynamic_demo<num_t>(1000,index);
+	kdtree_dynamic_demo<num_t>(1000000,index);
 	{
 		// do a knn search
 		const size_t num_results = 1;
@@ -187,7 +187,7 @@ void kdtree_demo(const size_t N)
 
 		std::cout << "knnSearch(nn="<<num_results<<"): \n";
 		std::cout << "ret_index=" << ret_index << " out_dist_sqr=" << out_dist_sqr << endl;
-		cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
+		//cout <<cloud.kdtree_get_pt(ret_index,0)<<" "<<cloud.kdtree_get_pt(ret_index,1)<<" "<<cloud.kdtree_get_pt(ret_index,2)<<"\n";
 	}
 	{
 		// Unsorted radius search:
@@ -210,7 +210,7 @@ int main()
 {
 	// Randomize Seed
 	srand(time(NULL));
-	kdtree_demo<float>(1000);
+	kdtree_demo<float>(1000000);
 	//kdtree_demo<double>(1000000);
 	return 0;
 }
