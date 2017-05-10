@@ -70,7 +70,7 @@ struct PointCloud
 		else return pts[idx].z;
 	}
 
-	inline T merge_point_cloud(PointCloud<T> new_cloud)
+	inline void merge_point_cloud(PointCloud<T> new_cloud)
 	{
 		int idx = pts.size();
 		pts.resize(pts.size()+new_cloud.kdtree_get_point_count());	

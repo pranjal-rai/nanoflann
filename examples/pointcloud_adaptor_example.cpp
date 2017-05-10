@@ -122,7 +122,7 @@ void kdtree_demo(const size_t N)
 	num_t query_pt[3] = { 0.5, 0.5, 0.5};
 
 	typedef PointCloudAdaptor<PointCloud<num_t> > PC2KD;
-	const PC2KD  pc2kd(cloud); // The adaptor
+	PC2KD  pc2kd(cloud); // The adaptor
 
 	// construct a kd-tree index:
 	typedef KDTreeSingleIndexAdaptor<
