@@ -768,6 +768,14 @@ namespace nanoflann
 
 
 		/*--------------------- Internal Data Structures --------------------------*/
+		
+		struct LinkedListNode
+		{
+			IndexType pt_index;
+			struct LinkedListNode* next;
+		};
+		typedef LinkedListNode* LinkedListNodePtr;
+
 		struct Node
 		{
 			/** Union used because a node can be either a LEAF node or a non-leaf node, so both data fields are never used simultaneously */
@@ -775,7 +783,7 @@ namespace nanoflann
 				struct leaf
                                 {
 					IndexType    left, right;  //!< Indices of points in leaf node
-					std::vector<IndexType> pts_new_idx;
+					LinkedListNode *pts_new_head, *pts_new_tail;
 				} lr;
 				struct nonleaf
                                 {
@@ -882,7 +890,20 @@ namespace nanoflann
 					ElementType out_dist_sqr;
 					resultSet.init(&ret_index, &out_dist_sqr );
 					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
-					(node_closest->node_type.lr.pts_new_idx).push_back(i);
+					if(node_closest->node_type.lr.pts_new_head == NULL)
+					{
+						node_closest->node_type.lr.pts_new_head=(LinkedListNodePtr)malloc(sizeof(LinkedListNode));
+						node_closest->node_type.lr.pts_new_head->pt_index=i;
+						node_closest->node_type.lr.pts_new_head->next=NULL;
+						node_closest->node_type.lr.pts_new_tail=node_closest->node_type.lr.pts_new_head;
+					}
+					else
+					{
+						node_closest->node_type.lr.pts_new_tail->next=(LinkedListNodePtr)malloc(sizeof(LinkedListNode));
+						node_closest->node_type.lr.pts_new_tail=node_closest->node_type.lr.pts_new_tail->next;
+						node_closest->node_type.lr.pts_new_tail->pt_index=i;
+						node_closest->node_type.lr.pts_new_tail->next=NULL;
+					}
 				}
 				curr_dataset_idx=N; 
 			}
@@ -1101,7 +1122,8 @@ namespace nanoflann
 				node->child1 = node->child2 = NULL;    /* Mark as leaf node. */
 				node->node_type.lr.left = left;
 				node->node_type.lr.right = right;
-				node->node_type.lr.pts_new_idx.clear();
+				node->node_type.lr.pts_new_head=NULL;
+				node->node_type.lr.pts_new_tail=NULL;
 				// compute bounding-box of leaf points
 				for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
 					bbox[i].low = dataset_get(vind[left],i);
@@ -1278,8 +1300,8 @@ namespace nanoflann
 						node_closest=node;
 					}
 				}
-				for (IndexType i=0; i<node->node_type.lr.pts_new_idx.size(); ++i) {
-					const IndexType index = node->node_type.lr.pts_new_idx[i];// reorder... : i;
+				for (LinkedListNodePtr it=node->node_type.lr.pts_new_head; it!=NULL; it=it->next) {
+					const IndexType index = it->pt_index;// reorder... : i;
 					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
 					if (dist<worst_dist) {
 						result_set.addPoint(dist,index);
@@ -1343,8 +1365,8 @@ namespace nanoflann
 						result_set.addPoint(dist,vind[i]);
 					}
 				}
-				for (IndexType i=0; i<node->node_type.lr.pts_new_idx.size(); ++i) {
-					const IndexType index = node->node_type.lr.pts_new_idx[i];// reorder... : i;
+				for (LinkedListNodePtr it=node->node_type.lr.pts_new_head; it!=NULL; it=it->next) {
+					const IndexType index = it->pt_index;// reorder... : i;
 					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
 					if (dist<worst_dist) {
 						result_set.addPoint(dist,index);
