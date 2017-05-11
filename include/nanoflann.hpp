@@ -45,7 +45,7 @@
 
 #ifndef  NANOFLANN_HPP_
 #define  NANOFLANN_HPP_
-
+#include <iostream>
 #include <vector>
 #include <cassert>
 #include <algorithm>
@@ -880,6 +880,7 @@ namespace nanoflann
 			}
 			else
 			{
+				//std::cout <<root_node->node_type.sub.divfeat<<" "<<root_node->node_type.sub.divlow<<" "<<root_node->node_type.sub.divhigh<<"\n";
 				for(size_t i=curr_dataset_idx;i<N;i++)
 				{
 					ElementType tmp[]={dataset.kdtree_get_pt(i,0),dataset.kdtree_get_pt(i,1),dataset.kdtree_get_pt(i,2)};
@@ -888,7 +889,9 @@ namespace nanoflann
 					size_t ret_index;
 					ElementType out_dist_sqr;
 					resultSet.init(&ret_index, &out_dist_sqr );
+					//search(&tmp[0], root_node, node_closest);
 					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
+					std::cout <<node_closest->node_type.lr.left<<" "<<node_closest->node_type.lr.right<<"zzz\n";
 					if(node_closest->node_type.lr.pts_new_head == NULL)
 					{
 						node_closest->node_type.lr.pts_new_head=(LinkedListNodePtr)malloc(sizeof(LinkedListNode));
@@ -908,6 +911,28 @@ namespace nanoflann
 			}
 		}
 
+/**
+		 * Performs an exact search in the tree starting from a node.
+		 * \tparam RESULTSET Should be any ResultSet<DistanceType>
+		 */
+		void search(const ElementType* vec, const NodePtr node, NodePtr &node_closest) const
+		{
+			if ((node->child1 == NULL)&&(node->child2 == NULL)) {
+				node_closest=node;
+				return;
+			}
+			int idx = node->node_type.sub.divfeat;
+			ElementType val = vec[idx];
+			DistanceType diff1 = val - node->node_type.sub.divlow;
+			DistanceType diff2 = val - node->node_type.sub.divhigh;
+			if ((diff1+diff2)<0) {
+				search(vec, node->child1, node_closest);
+			}
+			else {
+				search(vec, node->child2, node_closest);
+			}
+		}
+
 		/**
 		 * Builds the index
 		 */
@@ -920,6 +945,10 @@ namespace nanoflann
 			if(m_size == 0) return;
 			computeBoundingBox(root_bbox);
 			root_node = divideTree(0, m_size, root_bbox );   // construct the tree
+			//for(int i=0;i<vind.size();i++)
+			//	std::cout <<vind[i]<<" "<<"\n";
+			//std::cout<<root_node->node_type.sub.divhigh<<"\n";
+			//std::cout <<root_node->child2->node_type.lr.left<<" "<<root_node->child2->node_type.lr.right<<"aaa\n";
 		}
 
 		/** Returns number of points in dataset  */
@@ -1274,7 +1303,6 @@ namespace nanoflann
 			return distsq;
 		}
 		
-	
 		/**
 		 * Performs an exact search in the tree starting from a node.
 		 * \tparam RESULTSET Should be any ResultSet<DistanceType>
