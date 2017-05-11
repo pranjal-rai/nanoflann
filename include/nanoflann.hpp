@@ -883,10 +883,23 @@ namespace nanoflann
 					bool flag;
 					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest, node_closest_parent, flag);
 					vind.push_back(i);
-					int cutfeat=rand()%dim;
+					/*std::vector<IndexType> ind;
+					for(int j=node_closest->node_type.lr.left;j<node_closest->node_type.lr.right;j++)
+						ind.push_back(vind[j]);
+					ind.push_back(i);
+					BoundingBox bbox;
+					computeBoundingBox(bbox,ind);
+					int cutfeat;
+					IndexType idx;
+					DistanceType cutval;
+					middleSplit_(&ind[0], ind.size(), idx, cutfeat, cutval, bbox);
+					//std::cout <<cutfeat<<" "<<idx<<"\n";
+					*/
+					int cutfeat=1;
 					ElementType max_elem=dataset.kdtree_get_pt(vind[i],cutfeat);
 					IndexType max_elem_index=i;
 					int l=node_closest->node_type.lr.left, r=node_closest->node_type.lr.right;
+					//std::cout <<node_closest_parent->node_type.sub.divhigh<<"\n";
 					for(size_t j=l;j<r;j++)
 					{
 						if(dataset.kdtree_get_pt(vind[j],cutfeat)>max_elem)
@@ -895,6 +908,7 @@ namespace nanoflann
 							max_elem_index=j;
 						}
 					}
+					//std::cout <<i<<" "<<l<<" "<<r<<" "<<max_elem<<" "<<max_elem_index<<"aaa\n";
 					std::swap(vind[max_elem_index],vind[i]);
 					node_closest=NULL;
 					if(!flag)
@@ -909,13 +923,17 @@ namespace nanoflann
 					}
 					node_closest->node_type.sub.divfeat=cutfeat;
 					node_closest->node_type.sub.divhigh=max_elem;
+					//std::cout <<max_elem<<" ";
 					max_elem=dataset.kdtree_get_pt(vind[l],cutfeat);
 					for(size_t j=l+1;j<r;j++)
 					{
 						if(dataset.kdtree_get_pt(vind[j],cutfeat)>max_elem)
 							max_elem=dataset.kdtree_get_pt(vind[j],cutfeat);
 					}
+
+					//std::cout <<max_elem<<"\n";
 					node_closest->node_type.sub.divlow=max_elem;
+					//std::cout <<node_closest->node_type.sub.divlow<<" "<<node_closest->node_type.sub.divhigh<<" "<<node_closest->node_type.sub.divfeat<<"\n";
 					node_closest->child1=pool.allocate<Node>();
 					node_closest->child2=pool.allocate<Node>();
 					node_closest->child1->node_type.lr.left=l;
@@ -924,11 +942,35 @@ namespace nanoflann
 					node_closest->child2->node_type.lr.left=i;
 					node_closest->child2->node_type.lr.right=i+1;
 					node_closest->child2->child1=node_closest->child2->child2=NULL;
+					//std::cout<<root_node->child2->node_type.lr.left<<" "<<root_node->child2->node_type.lr.right<<"\n";
 				}
 				curr_dataset_idx=N;
 			}
 		}
 
+		void computeBoundingBox(BoundingBox& bbox, std::vector<IndexType> &ind)
+		{
+			bbox.resize((DIM>0 ? DIM : dim));
+			if (dataset.kdtree_get_bbox(bbox))
+			{
+				// Done! It was implemented in derived class
+			}
+			else
+			{
+				const size_t N = ind.size();
+				if (!N) throw std::runtime_error("[nanoflann] computeBoundingBox() called but no data points found.");
+				for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
+					bbox[i].low =
+					bbox[i].high = dataset_get(ind[0],i);
+				}
+				for (size_t k=1; k<N; ++k) {
+					for (int i=0; i<(DIM>0 ? DIM : dim); ++i) {
+						if (dataset_get(ind[k],i)<bbox[i].low) bbox[i].low = dataset_get(ind[k],i);
+						if (dataset_get(ind[k],i)>bbox[i].high) bbox[i].high = dataset_get(ind[k],i);
+					}
+				}
+			}
+		}
 
 		/**
 		 * Builds the index
@@ -1370,6 +1412,7 @@ namespace nanoflann
 			if ((node->child1 == NULL)&&(node->child2 == NULL)) {
 				//count_leaf += (node->lr.right-node->lr.left);  // Removed since was neither used nor returned to the user.
 				DistanceType worst_dist = result_set.worstDist();
+				//std::cout <<node->node_type.lr.left<<" "<<node->node_type.lr.right<<"aaa\n";
 				for (IndexType i=node->node_type.lr.left; i<node->node_type.lr.right; ++i) {
 					const IndexType index = vind[i];// reorder... : i;
 					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
