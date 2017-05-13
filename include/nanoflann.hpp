@@ -368,6 +368,7 @@ namespace nanoflann
 		template <typename U, typename V>
 		inline DistanceType accum_dist(const U a, const V b, int ) const
 		{
+			//std::cout <<a<<" "<<b<<"\n";
 			return (a-b)*(a-b);
 		}
 	};
@@ -875,13 +876,22 @@ namespace nanoflann
 				for(size_t i=curr_dataset_idx;i<N;i++)
 				{
 					ElementType tmp[]={dataset.kdtree_get_pt(i,0),dataset.kdtree_get_pt(i,1),dataset.kdtree_get_pt(i,2)};
+					for(int j=0;j<dim;j++)
+					{
+						root_bbox[j].low=std::min(root_bbox[j].low,tmp[j]);
+						root_bbox[j].high=std::max(root_bbox[j].high,tmp[j]);		
+					}
 					NodePtr node_closest, node_closest_parent;
 					nanoflann::KNNResultSet<ElementType> resultSet(1);
 					size_t ret_index;
 					ElementType out_dist_sqr;
 					resultSet.init(&ret_index, &out_dist_sqr );
 					bool flag;
-					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest, node_closest_parent, flag);
+					//for(int j=0;j<vind.size();j++)
+					//	std::cout <<vind[j]<<" ";
+					//findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest, node_closest_parent, flag);
+					search(&tmp[0], NULL, 0, root_node, node_closest, node_closest_parent, flag);
+					//std::cout<<node_closest->node_type.lr.left<<" "<<node_closest->node_type.lr.right<<" "<<flag<<"\n";;
 					vind.push_back(i);
 					/*std::vector<IndexType> ind;
 					for(int j=node_closest->node_type.lr.left;j<node_closest->node_type.lr.right;j++)
@@ -930,7 +940,8 @@ namespace nanoflann
 						if(dataset.kdtree_get_pt(vind[j],cutfeat)>max_elem)
 							max_elem=dataset.kdtree_get_pt(vind[j],cutfeat);
 					}
-
+					//for(int j=0;j<vind.size();j++)
+					//	std::cout <<vind[j]<<" ";
 					//std::cout <<max_elem<<"\n";
 					node_closest->node_type.sub.divlow=max_elem;
 					//std::cout <<node_closest->node_type.sub.divlow<<" "<<node_closest->node_type.sub.divhigh<<" "<<node_closest->node_type.sub.divfeat<<"\n";
@@ -942,9 +953,34 @@ namespace nanoflann
 					node_closest->child2->node_type.lr.left=i;
 					node_closest->child2->node_type.lr.right=i+1;
 					node_closest->child2->child1=node_closest->child2->child2=NULL;
-					//std::cout<<root_node->child2->node_type.lr.left<<" "<<root_node->child2->node_type.lr.right<<"\n";
+					//root_node->node_type.sub.divhigh=5;
+					//std::cout<<root_node->child2->child1->node_type.lr.left<<" "<<root_node->child2->child1->node_type.lr.right<<"\n";
 				}
 				curr_dataset_idx=N;
+			}
+		}
+
+/**
+		 * Performs an exact search in the tree starting from a node.
+		 * \tparam RESULTSET Should be any ResultSet<DistanceType>
+		 */
+		void search(const ElementType* vec, NodePtr parent_node_tmp, bool f_tmp, const NodePtr node, NodePtr &node_closest, NodePtr &parent_node, bool &f) const
+		{
+			if ((node->child1 == NULL)&&(node->child2 == NULL)) {
+				node_closest=node;
+				parent_node=parent_node_tmp;
+				f=f_tmp;
+				return;
+			}
+			int idx = node->node_type.sub.divfeat;
+			ElementType val = vec[idx];
+			DistanceType diff1 = val - node->node_type.sub.divlow;
+			DistanceType diff2 = val - node->node_type.sub.divhigh;
+			if ((diff1+diff2)<0) {
+				search(vec, node, 0, node->child1, node_closest, parent_node, f);
+			}
+			else {
+				search(vec, node, 1, node->child2, node_closest, parent_node, f);
 			}
 		}
 
@@ -1031,6 +1067,7 @@ namespace nanoflann
 			distance_vector_t dists; // fixed or variable-sized container (depending on DIM)
 			dists.assign((DIM>0 ? DIM : dim) ,0); // Fill it with zeros.
 			DistanceType distsq = computeInitialDistances(vec, dists);
+			//std::cout <<distsq<<"sss\n";
 			searchLevel(result, vec, root_node, distsq, dists, epsError);  // "count_leaf" parameter removed since was neither used nor returned to the user.
             return result.full();
 		}
@@ -1417,6 +1454,7 @@ namespace nanoflann
 					const IndexType index = vind[i];// reorder... : i;
 					DistanceType dist = distance(vec, index, (DIM>0 ? DIM : dim));
 					if (dist<worst_dist) {
+						//std::cout <<dist<<"xxx\n";
 						result_set.addPoint(dist,vind[i]);
 					}
 				}
@@ -1425,6 +1463,7 @@ namespace nanoflann
 
 			/* Which child branch should be taken first? */
 			int idx = node->node_type.sub.divfeat;
+			//std::cout <<root_node->node_type.sub.divhigh<<"qqq\n";
 			ElementType val = vec[idx];
 			DistanceType diff1 = val - node->node_type.sub.divlow;
 			DistanceType diff2 = val - node->node_type.sub.divhigh;
@@ -1449,7 +1488,9 @@ namespace nanoflann
 			DistanceType dst = dists[idx];
 			mindistsq = mindistsq + cut_dist - dst;
 			dists[idx] = cut_dist;
+			//std::cout <<mindistsq<<" "<<result_set.worstDist()<<" "<<cut_dist<<"\n";
 			if (mindistsq*epsError<=result_set.worstDist()) {
+				//std::cout <<"xxx"<<"\n";
 				searchLevel(result_set, vec, otherChild, mindistsq, dists, epsError);
 			}
 			dists[idx] = dst;
