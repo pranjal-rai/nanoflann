@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *************************************************************************/
 
-#include <nanoflann.hpp>
+#include "../include/nanoflann.hpp"
 
 #include <ctime>
 #include <cstdlib>
@@ -70,6 +70,17 @@ struct PointCloud
 		else return pts[idx].z;
 	}
 
+	inline void merge_point_cloud(PointCloud<T> new_cloud)
+	{
+		int idx = pts.size();
+		pts.resize(pts.size()+new_cloud.kdtree_get_point_count());
+		for(int i=0, j=idx;i<new_cloud.kdtree_get_point_count();i++, j++)
+		{
+			pts[j].x=new_cloud.kdtree_get_pt(i,0);
+			pts[j].y=new_cloud.kdtree_get_pt(i,1);
+			pts[j].z=new_cloud.kdtree_get_pt(i,2);
+		}
+	}
 	// Optional bounding-box computation: return false to default to a standard bbox computation loop.
 	//   Return true if the BBOX was already computed by the class and returned in "bb" so it can be avoided to redo it again.
 	//   Look at bb.size() to find out the expected dimensionality (e.g. 2 or 3 for point clouds)
@@ -89,8 +100,15 @@ void generateRandomPointCloud(PointCloud<T> &point, const size_t N, const T max_
 		point.pts[i].y = max_range * (rand() % 1000) / T(1000);
 		point.pts[i].z = max_range * (rand() % 1000) / T(1000);
 	}
-
 	std::cout << "done\n";
+}
+
+template <typename num_t>
+void kdtree_dynamic_demo(const size_t N, KDTreeSingleIndexAdaptor<L2_Simple_Adaptor<num_t, PointCloud<num_t> >, PointCloud<num_t>, 3 /* dim */> &index)
+{
+	PointCloud<num_t> cloud;
+	generateRandomPointCloud(cloud, N);
+	index.insert(cloud);
 }
 
 
@@ -101,7 +119,6 @@ void kdtree_demo(const size_t N)
 
 	// Generate points:
 	generateRandomPointCloud(cloud, N);
-
 	num_t query_pt[3] = { 0.5, 0.5, 0.5};
 
 
@@ -114,10 +131,10 @@ void kdtree_demo(const size_t N)
 
 	dump_mem_usage();
 
-	my_kd_tree_t   index(3 /*dim*/, cloud, KDTreeSingleIndexAdaptorParams(10 /* max leaf */) );
+	my_kd_tree_t   index(3 /*dim*/, cloud, KDTreeSingleIndexAdaptorParams(1 /* max leaf */) );
 	index.buildIndex();
 
-	dump_mem_usage();
+	dump_mem_usage();	
 	{
 		// do a knn search
 		const size_t num_results = 1;
@@ -142,7 +159,32 @@ void kdtree_demo(const size_t N)
 		std::pair<size_t,num_t> worst_pair = resultSet.worst_item();
 		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
 	}
+	kdtree_dynamic_demo<num_t>(1000000, index);
+	std::cout << "After adding points...";
+	{
+		// do a knn search
+		const size_t num_results = 1;
+		size_t ret_index;
+		num_t out_dist_sqr;
+		nanoflann::KNNResultSet<num_t> resultSet(num_results);
+		resultSet.init(&ret_index, &out_dist_sqr );
+		index.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
 
+		std::cout << "knnSearch(nn="<<num_results<<"): \n";
+		std::cout << "ret_index=" << ret_index << " out_dist_sqr=" << out_dist_sqr << endl;
+	}
+	{
+		// Unsorted radius search:
+		const num_t radius = 1;
+		std::vector<std::pair<size_t,num_t> > indices_dists;
+		RadiusResultSet<num_t,size_t> resultSet(radius,indices_dists);
+
+		index.findNeighbors(resultSet, query_pt, nanoflann::SearchParams());
+
+		// Get worst (furthest) point, without sorting:
+		std::pair<size_t,num_t> worst_pair = resultSet.worst_item();
+		cout << "Worst pair: idx=" << worst_pair.first << " dist=" << worst_pair.second << endl;
+        }
 }
 
 int main()
