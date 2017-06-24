@@ -842,7 +842,7 @@ namespace nanoflann
 		{
 			m_size = dataset.kdtree_get_point_count();
 			m_size_at_index_build = m_size;
-			thresh = 100;
+			thresh = 10000;
 			curr_dataset_idx = 0;
 			dim = dimensionality;
 			if (DIM>0) dim=DIM;
@@ -880,7 +880,6 @@ namespace nanoflann
 			}
 			else
 			{
-				//std::cout <<root_node->node_type.sub.divfeat<<" "<<root_node->node_type.sub.divlow<<" "<<root_node->node_type.sub.divhigh<<"\n";
 				for(size_t i=curr_dataset_idx;i<N;i++)
 				{
 					ElementType tmp[]={dataset.kdtree_get_pt(i,0),dataset.kdtree_get_pt(i,1),dataset.kdtree_get_pt(i,2)};
@@ -889,8 +888,8 @@ namespace nanoflann
 					size_t ret_index;
 					ElementType out_dist_sqr;
 					resultSet.init(&ret_index, &out_dist_sqr );
-					//search(&tmp[0], root_node, node_closest);
-					findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
+					search(&tmp[0], root_node, node_closest);
+					//findNeighborNode<KNNResultSet<ElementType> >(resultSet, &tmp[0], nanoflann::SearchParams(10), node_closest);
 					std::cout <<node_closest->node_type.lr.left<<" "<<node_closest->node_type.lr.right<<"zzz\n";
 					if(node_closest->node_type.lr.pts_new_head == NULL)
 					{
@@ -945,10 +944,6 @@ namespace nanoflann
 			if(m_size == 0) return;
 			computeBoundingBox(root_bbox);
 			root_node = divideTree(0, m_size, root_bbox );   // construct the tree
-			//for(int i=0;i<vind.size();i++)
-			//	std::cout <<vind[i]<<" "<<"\n";
-			//std::cout<<root_node->node_type.sub.divhigh<<"\n";
-			//std::cout <<root_node->child2->node_type.lr.left<<" "<<root_node->child2->node_type.lr.right<<"aaa\n";
 		}
 
 		/** Returns number of points in dataset  */
